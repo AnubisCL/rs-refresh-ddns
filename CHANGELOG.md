@@ -13,6 +13,10 @@ All notable changes to this project will be documented in this file.
 - 创建 CHANGELOG.md 并记录项目初始化版本
 - *(changelog)* 更新 CHANGELOG.md 文件
 
+### ⚙️ Miscellaneous Tasks
+
+- Release rs-refresh-ddns version 0.1.2
+
 ## [0.1.1] - 2025-08-28
 
 ### 🚀 Features
