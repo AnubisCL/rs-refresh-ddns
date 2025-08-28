@@ -20,6 +20,7 @@ export CRON="0 */15 * * * *"
 
 # IPv6获取方式，可选值：external（通过外部服务获取）, local（获取本地地址）
 export IPV6_METHOD="external"
+export HOSTS_INTERFACE="eth0"
 
 # 外部IPv6获取服务地址
 export IP_SERVICE_URL="https://6.ipw.cn"
@@ -41,6 +42,7 @@ cron = "0 */15 * * * *"
 
 # IPv6获取方式，可选值：external（通过外部服务获取）, local（获取本地地址）
 ipv6_method = "external"
+hosts_interface=eth0
 
 # 外部IPv6获取服务地址
 ip_service_url = "https://6.ipw.cn"
