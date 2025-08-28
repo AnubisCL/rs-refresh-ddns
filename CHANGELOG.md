@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2025-08-28
+
+### 🚀 Features
+
+- *(ipv6)* 增加本地 IPv6 地址获取功能
+
+### ⚙️ Miscellaneous Tasks
+
+- 添加 .DS_Store 文件到 .gitignore
+
+## [0.1.4] - 2025-08-28
+
+### ⚙️ Miscellaneous Tasks
+
+- Release rs-refresh-ddns version 0.1.4
+
 ## [0.1.3] - 2025-08-28
 
 ### ⚙️ Miscellaneous Tasks
