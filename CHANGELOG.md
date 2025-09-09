@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2025-09-09
+
+### 🚀 Features
+
+- *(ipv6)* 添加自定义shell命令获取IPv6地址功能
+
+### 🐛 Bug Fixes
+
+- *(src)* 修改命令执行时参数处理方式 E0283
+- *(ipv6)* 修复通过 shell 命令获取 IPv6 地址的逻辑
+
 ## [0.1.5] - 2025-08-28
 
 ### 🚀 Features
@@ -11,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - 添加 .DS_Store 文件到 .gitignore
+- Release rs-refresh-ddns version 0.1.5
 
 ## [0.1.4] - 2025-08-28
 

@@ -877,7 +877,7 @@ dependencies = [
 
 [[package]]
 name = "rs-refresh-ddns"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "if-addrs",
  "reqwest",
