@@ -207,7 +207,7 @@ async fn get_ipv6_from_custom_shell(config: &Config) -> Result<String, Box<dyn s
         debug!("Executing command: {} {:?}", cmd, args);
 
         let output = tokio::process::Command::new(cmd)
-            .args(args.iter().map(|s| s.as_ref()))
+            .args(args.iter().map(|s| s.to_string()))
             .output()
             .await?;
 
