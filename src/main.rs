@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::time::Duration;
 use tokio::time;
 use tokio_cron_scheduler::{Job, JobScheduler};
@@ -52,7 +53,7 @@ struct Config {
     duckdns_domain: String,
     duckdns_token: String,
     hosts_interface: Option<String>,
-    shell_command: Option<String>
+    shell_command: Option<Vec<String>>
 }
 
 impl Config {
@@ -63,6 +64,13 @@ impl Config {
         }
 
         // 如果配置文件不存在，则从环境变量读取
+        let shell_command = if let Ok(cmd) = std::env::var("SHELL_COMMAND") {
+            Some(vec!["sh".to_string(), "-c".to_string(), cmd])
+        } else {
+            None
+        };
+
+        // 如果配置文件不存在，则从环境变量读取
         Self {
             cron: std::env::var("CRON").unwrap_or_else(|_| "0 */5 * * * *".to_string()), // 默认每5分钟执行一次
             ipv6_method: std::env::var("IPV6_METHOD").unwrap_or_else(|_| "external".to_string()), // 默认使用外部服务
@@ -70,7 +78,7 @@ impl Config {
             duckdns_domain: std::env::var("DUCKDNS_DOMAIN").expect("DUCKDNS_DOMAIN must be set"),
             duckdns_token: std::env::var("DUCKDNS_TOKEN").expect("DUCKDNS_TOKEN must be set"),
             hosts_interface: std::env::var("HOSTS_INTERFACE").ok(),
-            shell_command: std::env::var("SHELL_COMMAND").ok(),
+            shell_command,
         }
     }
 
@@ -99,7 +107,7 @@ struct ConfigFile {
     duckdns_domain: Option<String>,
     duckdns_token: Option<String>,
     hosts_interface: Option<String>,
-    shell_command: Option<String>,
+    shell_command: Option<Vec<String>>,
 }
 
 // 更新DDNS的主函数
@@ -195,29 +203,40 @@ async fn get_ipv6_from_custom_shell(config: &Config) -> Result<String, Box<dyn s
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         // 检查是否配置了shell命令
-        let command = config.shell_command.as_ref().ok_or("No shell command configured for IPv6 method 'shell'")?;
+        let command_parts = config.shell_command.as_ref().ok_or("No shell command configured for IPv6 method 'shell'")?;
 
-        debug!("Fetching IPv6 address by executing custom shell command: {}", command);
+        if command_parts.is_empty() {
+            return Err("Shell command is empty".into());
+        }
 
-        // 分割命令和参数
-        let parts: Vec<&str> = command.split_whitespace().collect();
-        let cmd = parts[0].to_owned();
-        let args = &parts[1..];
+        debug!("Fetching IPv6 address by executing custom shell command: {:?}", command_parts);
 
-        debug!("Executing command: {} {:?}", cmd, args);
+        // 提取命令和参数
+        let command = &command_parts[0];
+        let args = &command_parts[1..];
 
-        let output = tokio::process::Command::new(cmd)
-            .args(args.iter().map(|s| s.to_string()))
+        debug!("Executing command: {} {:?}", command, args);
+
+        let output = tokio::process::Command::new(command.to_string())
+            .args(args.iter().map(|s| <std::string::String as AsRef<OsStr>>::as_ref(s)))
             .output()
             .await?;
 
         if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            error!("Shell command failed - stderr: {}, stdout: {}", stderr, stdout);
             return Err(format!("Shell command failed: {}", String::from_utf8_lossy(&output.stderr)).into());
         }
 
         let ipv6 = String::from_utf8(output.stdout)?.trim().to_string();
         if ipv6.is_empty() {
             return Err("Shell command returned empty output".into());
+        }
+
+        // 验证IPv6地址格式
+        if !ipv6.contains(":") {
+            return Err(format!("Shell command returned invalid IPv6 address: {}", ipv6).into());
         }
 
         debug!("Got IPv6 from shell command: {}", ipv6);
