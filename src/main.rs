@@ -51,7 +51,8 @@ struct Config {
     ip_service_url: String,
     duckdns_domain: String,
     duckdns_token: String,
-    hosts_interface: Option<String>
+    hosts_interface: Option<String>,
+    shell_command: Option<String>
 }
 
 impl Config {
@@ -69,6 +70,7 @@ impl Config {
             duckdns_domain: std::env::var("DUCKDNS_DOMAIN").expect("DUCKDNS_DOMAIN must be set"),
             duckdns_token: std::env::var("DUCKDNS_TOKEN").expect("DUCKDNS_TOKEN must be set"),
             hosts_interface: std::env::var("HOSTS_INTERFACE").ok(),
+            shell_command: std::env::var("SHELL_COMMAND").ok(),
         }
     }
 
@@ -84,6 +86,7 @@ impl Config {
             duckdns_domain: config.duckdns_domain.ok_or("DUCKDNS_DOMAIN must be set")?,
             duckdns_token: config.duckdns_token.ok_or("DUCKDNS_TOKEN must be set")?,
             hosts_interface: config.hosts_interface,
+            shell_command: config.shell_command,
         })
     }
 }
@@ -96,6 +99,7 @@ struct ConfigFile {
     duckdns_domain: Option<String>,
     duckdns_token: Option<String>,
     hosts_interface: Option<String>,
+    shell_command: Option<String>,
 }
 
 // 更新DDNS的主函数
@@ -122,6 +126,10 @@ async fn get_ipv6_address(config: &Config) -> Result<String, Box<dyn std::error:
         "local" => {
             // 直接获取本地IPv6地址
             get_local_ipv6_address(config.hosts_interface.as_deref()).await
+        },
+        "shell" => {
+            // 通过执行shell命令获取IPv6地址
+            get_ipv6_from_custom_shell(config).await
         },
         _ => {
             error!("Invalid IPV6_METHOD: {}. Using external service.", config.ipv6_method);
@@ -175,6 +183,45 @@ async fn get_local_ipv6_address(interface_name: Option<&str>) -> Result<String, 
         Err(format!("No IPv6 address found for interface '{}'", name).into())
     } else {
         Err("No public IPv6 address found on any interface".into())
+    }
+}
+
+// 通过执行自定义shell命令获取IPv6地址
+async fn get_ipv6_from_custom_shell(config: &Config) -> Result<String, Box<dyn std::error::Error>> {
+    // 仅支持Linux和macOS
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    return Err("Shell command method only supported on Linux and macOS".into());
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        // 检查是否配置了shell命令
+        let command = config.shell_command.as_ref().ok_or("No shell command configured for IPv6 method 'shell'")?;
+
+        debug!("Fetching IPv6 address by executing custom shell command: {}", command);
+
+        // 分割命令和参数
+        let parts: Vec<&str> = command.split_whitespace().collect();
+        let cmd = parts[0].to_owned();
+        let args = &parts[1..];
+
+        debug!("Executing command: {} {:?}", cmd, args);
+
+        let output = tokio::process::Command::new(cmd)
+            .args(args.iter().map(|s| s.as_ref()))
+            .output()
+            .await?;
+
+        if !output.status.success() {
+            return Err(format!("Shell command failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+        }
+
+        let ipv6 = String::from_utf8(output.stdout)?.trim().to_string();
+        if ipv6.is_empty() {
+            return Err("Shell command returned empty output".into());
+        }
+
+        debug!("Got IPv6 from shell command: {}", ipv6);
+        Ok(ipv6)
     }
 }
 
